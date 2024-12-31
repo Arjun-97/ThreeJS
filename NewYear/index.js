@@ -92,8 +92,8 @@ const mouse = new THREE.Vector2();
 
 // Handle click events
 renderer.domElement.addEventListener('click', (event) => {
-    if (!isAnimating & text4.visible === true) {
-        // Convert mouse position to normalized device coordinates
+    if (!isAnimating && text4.visible === true) {
+        text5.visible = true;
         mouse.x = (event.clientX / w) * 2 - 1;
         mouse.y = -(event.clientY / h) * 2 + 1;
 
@@ -149,6 +149,156 @@ for (let i = 0; i < 500; i++) { // Increased from 250 to 500 particles
     particle.visible = false;
     scene.add(particle);
     confetti.push(particle);
+}
+
+// Add fragment geometry and material
+const fragmentGeometry = new THREE.PlaneGeometry(0.05, 0.05); // Size of each fragment
+const fragmentMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true });
+const fragments = [];
+
+// Create fragments
+for (let x = -1; x <= 1; x += 0.1) {
+    for (let y = -1; y <= 1; y += 0.1) {
+        const fragment = new THREE.Mesh(fragmentGeometry, fragmentMaterial);
+        fragment.position.set(x, y, 0);
+        fragment.visible = false;
+        scene.add(fragment);
+        fragments.push(fragment);
+    }
+}
+
+// Function to animate the crumble effect
+function animateCrumble(duration) {
+    const crumbleStartTime = Date.now();
+
+    function crumble() {
+        const elapsed = Date.now() - crumbleStartTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        fragments.forEach(fragment => {
+            if (progress > 0) {
+                fragment.visible = true;
+                fragment.position.z -= 0.1 * progress;
+                fragment.position.x += (Math.random() - 0.5) * 0.1 * progress;
+                fragment.position.y += (Math.random() - 0.5) * 0.1 * progress;
+                fragment.rotation.z += (Math.random() - 0.5) * 0.1 * progress;
+            }
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(crumble);
+        } else {
+            // Reset the scene after crumble effect
+            resetAnimation();
+        }
+    }
+
+    crumble();
+}
+
+// Modify the fadeOutScene function to exclude fragments from fade-out
+function fadeOutScene(duration) {
+    const fadeStartTime = Date.now();
+
+    function fade() {
+        const elapsed = Date.now() - fadeStartTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Fade out the entire scene except fragments
+        scene.traverse((object) => {
+            if (object.material && !fragments.includes(object)) {
+                object.material.opacity = 1 - progress;
+            }
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(fade);
+        } else {
+            // Start the crumble effect after fade-out
+            animateCrumble(2000); // 2-second crumble effect
+        }
+    }
+
+    fade();
+}
+
+// Update reset function to include fragment reset
+function resetAnimation() {
+    text2_1.visible = true;
+    text0.visible = true;
+    text2_2.visible = true;
+    text5.visible = true;
+    happyNewYear.visible = false;
+    scene.rotation.x = 0;
+    text4.position.y = 0;
+    text4.material.opacity = 1;
+    text5.material.opacity = 1;
+    happyNewYear.material.opacity = 1;
+
+    // Reset effects
+    ring.material.opacity = 0;
+    ring.scale.setScalar(1);
+    ring.rotation.z = 0;
+
+    // Reset confetti
+    confetti.forEach(particle => {
+        particle.visible = false;
+        particle.position.set(
+            (Math.random() - 0.5) * 2,
+            2,
+            (Math.random() - 0.5)
+        );
+        particle.material.opacity = 1;
+    });
+
+    // Reset fragments
+    fragments.forEach(fragment => {
+        fragment.visible = false;
+        fragment.position.set(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            0
+        );
+        fragment.rotation.z = 0;
+        fragment.material.opacity = 1;
+    });
+
+    // Reset opacity for all objects
+    scene.traverse((object) => {
+        if (object.material) {
+            object.material.opacity = 1;
+        }
+    });
+
+    setTimeout(() => {
+        let resetStartTime = Date.now();
+        const resetDuration = 1000; // 1 second reset animation
+
+        function resetPositions() {
+            const elapsed = Date.now() - resetStartTime;
+            const progress = Math.min(elapsed / resetDuration, 1);
+
+            // Animate "4" back to its original position
+            text4.visible = true;
+            text4.position.y = -1 * (1 - progress); // Move "4" back to y = 0
+
+            // Animate "5" back to its original position
+            text5.position.y = 5 * progress; // Move "5" back to y = 5
+            console.log(text5.position.y)
+
+            if (progress < 1) {
+                requestAnimationFrame(resetPositions);
+            }
+
+            if (text4.position.y === 0) {
+                text5.visible = false;
+            }
+
+
+        }
+
+        resetPositions();
+    }, 1500); // 1.5 seconds delay
 }
 
 // Modified animate5Coming to include ring effect
@@ -218,33 +368,6 @@ function updateConfetti() {
     });
 }
 
-// Fade out confetti and optionally the entire screen
-function fadeOutScene(duration) {
-    const fadeStartTime = Date.now();
-    const initialOpacities = confetti.map(particle => particle.material.opacity);
-
-    function fade() {
-        const elapsed = Date.now() - fadeStartTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        // Fade out the entire scene (optional)
-        scene.traverse((object) => {
-            if (object.material) {
-                object.material.opacity = 1 - progress;
-            }
-        });
-
-        if (progress < 1) {
-            requestAnimationFrame(fade);
-        } else {
-            // Reset the animation after fade-out
-            resetAnimation();
-        }
-    }
-
-    fade();
-}
-
 // Modify the main animation loop to include confetti
 function animate(currentTime = 0) {
     requestAnimationFrame(animate);
@@ -270,6 +393,7 @@ function animate(currentTime = 0) {
                 // Start fade-out effect before resetting
                 fadeOutScene(3000); // 3-second fade-out
             }
+
         }
     }
 
@@ -279,46 +403,6 @@ function animate(currentTime = 0) {
     }
 
     renderer.render(scene, camera);
-}
-
-// Update reset function to include new effects
-function resetAnimation() {
-    text2_1.visible = true;
-    text0.visible = true;
-    text2_2.visible = true;
-    // text4.visible = true;
-    // text5.position.y = 5;
-    // text5.scale.setScalar(1);
-    text5.visible = true;
-    happyNewYear.visible = false;
-    scene.rotation.x = 0;
-    text4.position.y = 0;
-    text4.material.opacity = 1;
-    text5.material.opacity = 1;
-    happyNewYear.material.opacity = 1;
-
-    // Reset effects
-    ring.material.opacity = 0;
-    ring.scale.setScalar(1);
-    ring.rotation.z = 0;
-
-    // Reset confetti
-    confetti.forEach(particle => {
-        particle.visible = false;
-        particle.position.set(
-            (Math.random() - 0.5) * 2,
-            2,
-            (Math.random() - 0.5)
-        );
-        particle.material.opacity = 1;
-    });
-
-    // Reset opacity for all objects
-    scene.traverse((object) => {
-        if (object.material) {
-            object.material.opacity = 1;
-        }
-    });
 }
 
 animate();
